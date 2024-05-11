@@ -37,14 +37,22 @@ async function run() {
       res.send(result);
     });
 
-    // show food Read operation
+    // get all food
     app.get("/allFood", async (req, res) => {
-      const cursor = foodCollection.find();
+      const { date } = req.query;
+      const cursor = foodCollection.find().sort({ date: date || "desc" });
       const result = await cursor.toArray();
       res.send(result);
     });
 
-    // get all food
+    // app.get("/allSpot", async (req, res) => {
+    //   const { cost } = req.query;
+    //   const cursor = spotCollection.find().sort({ cost: cost || "desc" });
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
+
+    // get single food
     app.get("/allFood/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -76,8 +84,20 @@ async function run() {
       res.send(result);
     });
 
+    // show requested food Read operation
+    app.get("/reqFood", async (req, res) => {
+      const cursor = requestedCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     // get reqFood by email
-    app.get('/reqFood/:email', async(req, res) =>)
+    app.get("/reqFood/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { userEmail: email };
+      const result = await requestedCollection.find(query).toArray();
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
