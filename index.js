@@ -27,6 +27,7 @@ async function run() {
     await client.connect();
 
     const foodCollection = client.db("foodDB").collection("food");
+    const requestedCollection = client.db("foodDB").collection("reqFood");
 
     // add food Create operation
     app.post("/addFood", async (req, res) => {
@@ -43,6 +44,7 @@ async function run() {
       res.send(result);
     });
 
+    // get all food
     app.get("/allFood/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -50,6 +52,7 @@ async function run() {
       res.send(result);
     });
 
+    // get food by donator email
     app.get("/myFood/:email", async (req, res) => {
       console.log(req.params.email);
       const result = await foodCollection
@@ -58,12 +61,23 @@ async function run() {
       res.send(result);
     });
 
+    // delete my added food
     app.delete("/allFood/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await foodCollection.deleteOne(query);
       res.send(result);
     });
+
+    // add requested food
+    app.post("/reqFood", async (req, res) => {
+      const newReq = req.body;
+      const result = await requestedCollection.insertOne(newReq);
+      res.send(result);
+    });
+
+    // get reqFood by email
+    app.get('/reqFood/:email', async(req, res) =>)
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
