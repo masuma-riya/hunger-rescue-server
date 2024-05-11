@@ -29,28 +29,30 @@ async function run() {
     const foodCollection = client.db("foodDB").collection("food");
     const requestedCollection = client.db("foodDB").collection("reqFood");
 
-    // add food Create operation
-    app.post("/addFood", async (req, res) => {
-      const newFood = req.body;
-      console.log(newFood);
-      const result = await foodCollection.insertOne(newFood);
+    // show requested food Read operation
+    app.get("/reqFood", async (req, res) => {
+      const cursor = requestedCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // get reqFood by email
+    app.get("/reqFood/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { userEmail: email };
+      const result = await requestedCollection.find(query).toArray();
       res.send(result);
     });
 
     // get all food
     app.get("/allFood", async (req, res) => {
       const { date } = req.query;
-      const cursor = foodCollection.find().sort({ date: date || "desc" });
+      const cursor = foodCollection
+        .find({ status: "Available" })
+        .sort({ date: date || "desc" });
       const result = await cursor.toArray();
       res.send(result);
     });
-
-    // app.get("/allSpot", async (req, res) => {
-    //   const { cost } = req.query;
-    //   const cursor = spotCollection.find().sort({ cost: cost || "desc" });
-    //   const result = await cursor.toArray();
-    //   res.send(result);
-    // });
 
     // get single food
     app.get("/allFood/:id", async (req, res) => {
@@ -68,6 +70,13 @@ async function run() {
         .toArray();
       res.send(result);
     });
+    // add food Create operation
+    app.post("/addFood", async (req, res) => {
+      const newFood = req.body;
+      console.log(newFood);
+      const result = await foodCollection.insertOne(newFood);
+      res.send(result);
+    });
 
     // delete my added food
     app.delete("/allFood/:id", async (req, res) => {
@@ -78,25 +87,53 @@ async function run() {
     });
 
     // add requested food
-    app.post("/reqFood", async (req, res) => {
-      const newReq = req.body;
-      const result = await requestedCollection.insertOne(newReq);
-      res.send(result);
-    });
+    app.put("/reqFood/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
 
-    // show requested food Read operation
-    app.get("/reqFood", async (req, res) => {
-      const cursor = requestedCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
 
-    // get reqFood by email
-    app.get("/reqFood/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { userEmail: email };
-      const result = await requestedCollection.find(query).toArray();
-      res.send(result);
+      const selectedFood = await foodCollection.findOne(filter);
+      const {
+        foodName,
+        quantity,
+        date,
+        location,
+        photo,
+        status,
+        notes,
+        email,
+        donatorPhoto,
+        donatorName,
+      } = selectedFood;
+      console.log(selectedFood);
+
+      const food = {
+        $set: {
+          foodName,
+          quantity,
+          date,
+          location,
+          photo,
+          status: "Requested",
+          notes,
+          email,
+          donatorName,
+          donatorPhoto,
+        },
+      };
+      const updatedStatus = await foodCollection.updateOne(
+        filter,
+        food,
+        options
+      );
+      if (updatedStatus.modifiedCount > 0) {
+        const result = await requestedCollection.insertOne(data);
+        res.send(result);
+      } else {
+        res.status(404).send({ message: "Request failed" });
+      }
     });
 
     // Send a ping to confirm a successful connection
