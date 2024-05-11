@@ -101,13 +101,11 @@ async function run() {
         date,
         location,
         photo,
-        status,
         notes,
         email,
         donatorPhoto,
         donatorName,
       } = selectedFood;
-      console.log(selectedFood);
 
       const food = {
         $set: {
