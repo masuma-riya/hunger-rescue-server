@@ -1,13 +1,21 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
 
 // middlewares
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
 app.use(express.json());
+app.use(cookieParser());
 
 // mongoDB
 const uri = `mongodb://${process.env.DB_USER}:${process.env.DB_PASS}@ac-wkac0pk-shard-00-00.rbwl5qc.mongodb.net:27017,ac-wkac0pk-shard-00-01.rbwl5qc.mongodb.net:27017,ac-wkac0pk-shard-00-02.rbwl5qc.mongodb.net:27017/?ssl=true&replicaSet=atlas-1019oo-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0`;
@@ -21,6 +29,33 @@ const client = new MongoClient(uri, {
   },
 });
 
+// middlewares
+
+const logger = async (req, res, next) => {
+  console.log("called", req.host, req.originalUrl);
+  next();
+};
+
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "Invalid authorization" });
+    }
+    req.user = decoded;
+    next();
+  });
+};
+
+const cookieOption = {
+  httpOnly: true,
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+  secure: process.env.NODE_ENV === "production" ? true : false,
+};
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -29,15 +64,33 @@ async function run() {
     const foodCollection = client.db("foodDB").collection("food");
     const requestedCollection = client.db("foodDB").collection("reqFood");
 
-    // show requested food Read operation
-    app.get("/reqFood", async (req, res) => {
-      const cursor = requestedCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
+    // auth related api
+    app.post("/jwt", logger, async (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "5h",
+      });
+      res.cookie("token", token, cookieOption).send({ success: true });
     });
 
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      console.log("Logging Out", user);
+      res
+        .clearCookie("token", { ...cookieOption, maxAge: 0 })
+        .send({ success: true });
+    });
+
+    // show requested food Read operation
+    // app.get("/reqFood", async (req, res) => {
+    //   const cursor = requestedCollection.find();
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
+
     // get reqFood by email
-    app.get("/reqFood/:email", async (req, res) => {
+    app.get("/reqFood/:email", logger, verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { userEmail: email };
       const result = await requestedCollection.find(query).toArray();
@@ -63,7 +116,7 @@ async function run() {
     });
 
     // get food by donator email
-    app.get("/myFood/:email", async (req, res) => {
+    app.get("/myFood/:email", logger, verifyToken, async (req, res) => {
       // console.log(req.params.email);
       const result = await foodCollection
         .find({ email: req.params.email })
