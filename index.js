@@ -64,7 +64,7 @@ async function run() {
 
     // get food by donator email
     app.get("/myFood/:email", async (req, res) => {
-      console.log(req.params.email);
+      // console.log(req.params.email);
       const result = await foodCollection
         .find({ email: req.params.email })
         .toArray();
@@ -73,8 +73,28 @@ async function run() {
     // add food Create operation
     app.post("/addFood", async (req, res) => {
       const newFood = req.body;
-      console.log(newFood);
+      // console.log(newFood);
       const result = await foodCollection.insertOne(newFood);
+      res.send(result);
+    });
+
+    // update a food
+    app.put("/allFood/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateFood = req.body;
+      const spot = {
+        $set: {
+          foodName: updateFood.foodName,
+          quantity: updateFood.quantity,
+          date: updateFood.date,
+          location: updateFood.location,
+          photo: updateFood.photo,
+          notes: updateFood.notes,
+        },
+      };
+      const result = await foodCollection.updateOne(filter, spot, options);
       res.send(result);
     });
 
