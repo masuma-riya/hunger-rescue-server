@@ -69,7 +69,7 @@ async function run() {
       const user = req.body;
       console.log(user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "5h",
+        expiresIn: "3h",
       });
       res.cookie("token", token, cookieOption).send({ success: true });
     });
@@ -81,13 +81,6 @@ async function run() {
         .clearCookie("token", { ...cookieOption, maxAge: 0 })
         .send({ success: true });
     });
-
-    // show requested food Read operation
-    // app.get("/reqFood", async (req, res) => {
-    //   const cursor = requestedCollection.find();
-    //   const result = await cursor.toArray();
-    //   res.send(result);
-    // });
 
     // get reqFood by email
     app.get("/reqFood/:email", logger, verifyToken, async (req, res) => {
