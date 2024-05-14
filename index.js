@@ -32,7 +32,6 @@ const client = new MongoClient(uri, {
 // middlewares
 
 const logger = async (req, res, next) => {
-  console.log("called", req.host, req.originalUrl);
   next();
 };
 
@@ -67,16 +66,15 @@ async function run() {
     // auth related api
     app.post("/jwt", logger, async (req, res) => {
       const user = req.body;
-      console.log(user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "3h",
+        expiresIn: "8h",
       });
       res.cookie("token", token, cookieOption).send({ success: true });
     });
 
     app.post("/logout", async (req, res) => {
       const user = req.body;
-      console.log("Logging Out", user);
+
       res
         .clearCookie("token", { ...cookieOption, maxAge: 0 })
         .send({ success: true });
@@ -101,7 +99,7 @@ async function run() {
     });
 
     // get single food
-    app.get("/allFood/:id", async (req, res) => {
+    app.get("/allFood/:id", logger, verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await foodCollection.findOne(query);
@@ -110,7 +108,6 @@ async function run() {
 
     // get food by donator email
     app.get("/myFood/:email", logger, verifyToken, async (req, res) => {
-      // console.log(req.params.email);
       const result = await foodCollection
         .find({ email: req.params.email })
         .toArray();
@@ -119,7 +116,7 @@ async function run() {
     // add food Create operation
     app.post("/addFood", async (req, res) => {
       const newFood = req.body;
-      // console.log(newFood);
+
       const result = await foodCollection.insertOne(newFood);
       res.send(result);
     });
