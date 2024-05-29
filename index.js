@@ -90,11 +90,15 @@ async function run() {
 
     // get all food
     app.get("/allFood", async (req, res) => {
+      const page = parseInt(req.query.page) || 1;
+      const size = parseInt(req.query.size) || 6;
+      const skipIndex = (page - 1) * size;
+      // console.log(page, size);
       const { date } = req.query;
-      const cursor = foodCollection
+      const cursor = await foodCollection
         .find({ status: "Available" })
         .sort({ date: date || "desc" });
-      const result = await cursor.toArray();
+      const result = await cursor.skip(skipIndex).limit(size).toArray();
       res.send(result);
     });
 
@@ -113,6 +117,16 @@ async function run() {
         .toArray();
       res.send(result);
     });
+
+    // pagination
+    app.get("/foodsCount", async (req, res) => {
+      // const count = await foodCollection.estimatedDocumentCount();
+      const availableFood = await foodCollection
+        .find({ status: "Available" })
+        .toArray();
+      res.send({ count: availableFood.length });
+    });
+
     // add food Create operation
     app.post("/addFood", async (req, res) => {
       const newFood = req.body;
